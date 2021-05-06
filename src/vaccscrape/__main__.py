@@ -1,10 +1,11 @@
 import asyncio
 import logging
-import threading
 import os
+import threading
 
 from src.vaccscrape.alive import run_logs_server
 from vaccscrape import config
+from vaccscrape.constants import ENV_DEBUG
 from vaccscrape.notifier import notifier, send_notification
 from vaccscrape.scrape import scrape_and_save
 
@@ -38,6 +39,9 @@ async def main():
     logging.root.setLevel(logging.INFO)
 
     logger.info("Application started")
+
+    if os.environ.get(ENV_DEBUG):
+        logger.info("Debug mode")
 
     assert os.path.exists(config.PUSHSAFER_CONFIG_FILE)
 

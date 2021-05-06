@@ -1,8 +1,7 @@
 import logging
 from typing import Optional
 
-from vaccscrape import io
-from vaccscrape import config
+from vaccscrape import config, io
 
 logger = logging.getLogger(__name__)
 

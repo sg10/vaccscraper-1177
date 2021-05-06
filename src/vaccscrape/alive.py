@@ -1,6 +1,4 @@
-import argparse
 import logging
-import socketserver
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List
 
@@ -21,16 +19,18 @@ class S(BaseHTTPRequestHandler):
         """This just generates an HTML document that includes `message`
         in the body. Override, or re-write this do do more interesting stuff.
         """
-        bootstrap_css = '<link rel="stylesheet" ' \
-                        'href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" ' \
-                        'integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" ' \
-                        'crossorigin="anonymous">'
+        bootstrap_css = (
+            '<link rel="stylesheet" '
+            'href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" '
+            'integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" '
+            'crossorigin="anonymous">'
+        )
 
-        content = f'<html>{bootstrap_css}<meta charset="utf-8"/><body style=\"padding: 2em;\">{message}</body></html>'
+        content = f'<html>{bootstrap_css}<meta charset="utf-8"/><body style="padding: 2em;">{message}</body></html>'
         return content.encode("utf8")  # NOTE: must return a bytes object!
 
     def do_GET(self):
-        TIME_WINDOW_SEC = 24*60*60
+        TIME_WINDOW_SEC = 24 * 60 * 60
 
         self._set_headers()
         successes = io.read_latest_successes__sync(TIME_WINDOW_SEC)
@@ -54,14 +54,10 @@ class S(BaseHTTPRequestHandler):
                 if len(r.headlines) == 0:
                     sublist = "(no change)"
                 else:
-                    sublist = f"<ul>{''.join(['<li>' + h + '</li>' for h in r.headlines])}</ul>"
-                s.append(
-                    "<li><strong>"
-                    + r.timestamp
-                    + "</strong>:  "
-                    + sublist
-                    + "</li>"
-                )
+                    sublist = (
+                        f"<ul>{''.join([f'<li>{h}</li>' for h in r.headlines])}</ul>"
+                    )
+                s.append(f"<li><strong>{r.timestamp}</strong>:  " f"{sublist}</li>")
             elif isinstance(r, ScrapeError):
                 s.append(
                     "<li><strong>"
