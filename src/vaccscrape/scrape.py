@@ -23,7 +23,7 @@ async def scrape() -> ScrapeResult:
             await page.evaluate("(element) => element.textContent", e) for e in elements
         ]
 
-        result = ScrapeSuccess(headlines=set(headlines))
+        result = ScrapeSuccess(headlines=headlines)
         logger.info("Fetch success")
 
     except PyppeteerError as error:

@@ -3,7 +3,7 @@ import logging
 import os
 import threading
 
-from src.vaccscrape.alive import run_logs_server
+from src.vaccscrape.web import run_logs_server
 from vaccscrape import config
 from vaccscrape.constants import ENV_DEBUG
 from vaccscrape.notifier import notifier, send_notification
