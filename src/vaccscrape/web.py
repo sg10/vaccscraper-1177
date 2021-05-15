@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 class S(BaseHTTPRequestHandler):
-    def _set_headers(self):
-        self.send_response(200)
+    def _set_headers(self, http_status_code: int = 200):
+        self.send_response(http_status_code)
         self.send_header("Content-type", "text/html")
         self.send_header("Content-type", "text/html")
         self.end_headers()
@@ -18,22 +18,29 @@ class S(BaseHTTPRequestHandler):
         in the body. Override, or re-write this do do more interesting stuff.
         """
         bootstrap_css = (
-            '<link rel="stylesheet" '
-            'href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" '
-            'integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" '
-            'crossorigin="anonymous">'
+            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstr'
+            'ap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw'
+            '1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorig'
+            'in="anonymous">'
         )
 
-        content = f'<html>{bootstrap_css}<meta charset="utf-8"/><body style="padding: 2em;">{message}</body></html>'
+        content = (
+            f'<html>{bootstrap_css}<meta charset="utf-8"/>'
+            f'<body style="padding: 2em;">{message}</body></html>'
+        )
         return content.encode("utf8")  # NOTE: must return a bytes object!
 
     def do_GET(self):
         TIME_WINDOW_SEC = 24 * 60 * 60
 
-        self._set_headers()
-
         success_results = io.read_latest_successes__sync(TIME_WINDOW_SEC)
         error_results = io.read_latest_errors__sync(TIME_WINDOW_SEC)
+
+        # set header for remote status monitoring
+        if len(success_results) == 0:
+            self._set_headers(500)
+        else:
+            self._set_headers(200)
 
         errors_list = []
         successes_list = []
@@ -42,9 +49,10 @@ class S(BaseHTTPRequestHandler):
             previous_result = success_results[i - 1] if i >= 0 else []
             result = success_results[i]
 
-            diff_headlines = list(
-                set(result.headlines).difference(set(previous_result.headlines))
-            )
+            prev = set(previous_result.headlines)
+            curr = set(result.headlines)
+
+            diff_headlines = list(curr.difference(prev))
 
             row = ""
             if len(diff_headlines) > 0 or i == 0:
@@ -63,7 +71,8 @@ class S(BaseHTTPRequestHandler):
                     row += f"<li>{h}</li>"
                 row += "</ul>"
             else:
-                row += f"<li><strong>{result.timestamp}</strong>: (no change)</li>"
+                row += f"<li><strong>{result.timestamp}</strong>:"
+                row += "(no change)</li>"
 
             successes_list.append(row)
 
@@ -78,11 +87,14 @@ class S(BaseHTTPRequestHandler):
             )
 
             if i == 0:
-                row = f"<li><strong>{result.timestamp}</strong>: {result.error_message}</li>"
+                row = f"<li><strong>{result.timestamp}</strong>:"
+                row += "{result.error_message}</li>"
             elif len(diff) > 0:
-                row = f"<li><strong>{result.timestamp}: {diff}</strong></li>"
+                row = f"<li><strong>{result.timestamp}: "
+                row += "{diff}</strong></li>"
             else:
-                row = f"<li><strong>{result.timestamp}</strong>: (same error)</li>"
+                row = f"<li><strong>{result.timestamp}</strong>: "
+                row += "(same error)</li>"
 
             errors_list.append(row)
 
@@ -92,7 +104,8 @@ class S(BaseHTTPRequestHandler):
         errors_list.reverse()
         errors_rows = "\n".join(errors_list)
 
-        message = f"<h1>1177.se Vaccination Sign-Up Notifier</h1><h2>Error</h2>{errors_rows}<h2>Success</h2>{successes_rows}"
+        message = f"<h1>1177.se Vaccination Sign-Up Notifier</h1>"
+        message += f"<h2>Error</h2>{errors_rows}<h2>Success</h2>{successes_rows}"
         self.wfile.write(self._html(message))
 
     def do_HEAD(self):
