@@ -1,22 +1,28 @@
 import logging
-from http.server import BaseHTTPRequestHandler, HTTPServer
+
+import cherrypy
 
 from vaccscrape import config, io
 
 logger = logging.getLogger(__name__)
 
 
-class S(BaseHTTPRequestHandler):
-    def _set_headers(self, http_status_code: int = 200):
-        self.send_response(http_status_code)
-        self.send_header("Content-type", "text/html")
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
+class WebServer:
+    @cherrypy.expose("status")
+    def status(self):
+        TIME_WINDOW_SEC = 60 * 60
+        successes = io.read_latest_successes__sync(TIME_WINDOW_SEC)
 
-    def _html(self, message):
-        """This just generates an HTML document that includes `message`
-        in the body. Override, or re-write this do do more interesting stuff.
-        """
+        msg = f"{len(successes)} successful scrape(s) per hour<br/>"
+        if len(successes) < config.MONITOR_SUCCESSES_PER_HOUR:
+            msg += "ERROR"
+        else:
+            msg += "scraping like a rockstar"
+
+        return msg
+
+    @cherrypy.expose
+    def index(self):
         bootstrap_css = (
             '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstr'
             'ap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw'
@@ -24,23 +30,19 @@ class S(BaseHTTPRequestHandler):
             'in="anonymous">'
         )
 
+        page = self.scrapes_page()
+
         content = (
             f'<html>{bootstrap_css}<meta charset="utf-8"/>'
-            f'<body style="padding: 2em;">{message}</body></html>'
+            f'<body style="padding: 2em;">{page}</body></html>'
         )
-        return content.encode("utf8")  # NOTE: must return a bytes object!
+        return content.encode("utf8")
 
-    def do_GET(self):
+    def scrapes_page(self):
         TIME_WINDOW_SEC = 24 * 60 * 60
 
         success_results = io.read_latest_successes__sync(TIME_WINDOW_SEC)
         error_results = io.read_latest_errors__sync(TIME_WINDOW_SEC)
-
-        # set header for remote status monitoring
-        if len(success_results) == 0:
-            self._set_headers(500)
-        else:
-            self._set_headers(200)
 
         errors_list = []
         successes_list = []
@@ -104,16 +106,18 @@ class S(BaseHTTPRequestHandler):
         errors_list.reverse()
         errors_rows = "\n".join(errors_list)
 
-        message = f"<h1>1177.se Vaccination Sign-Up Notifier</h1>"
+        message = "<h1>1177.se Vaccination Sign-Up Notifier</h1>"
         message += f"<h2>Error</h2>{errors_rows}<h2>Success</h2>{successes_rows}"
-        self.wfile.write(self._html(message))
 
-    def do_HEAD(self):
-        self._set_headers()
+        return message
 
 
 def run_logs_server():
     logger.info("Starting logs server")
-    server_address = (config.ALIVE_PAGE_HOST, config.ALIVE_PAGE_PORT)
-    httpd = HTTPServer(server_address, S)
-    httpd.serve_forever()
+    cherrypy.config.update(
+        {
+            "server.socket_port": config.ALIVE_PAGE_PORT,
+            "server.socket_host": config.ALIVE_PAGE_HOST,
+        }
+    )
+    cherrypy.quickstart(WebServer())
