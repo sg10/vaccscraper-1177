@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import threading
 
 from src.vaccscrape.web import run_logs_server
 from vaccscrape import config
@@ -49,11 +48,11 @@ async def main():
 
     scraper_task = asyncio.create_task(run_scraper(event_scraped))
     examine_task = asyncio.create_task(run_notifier(event_scraped))
-
-    threading.Thread(target=run_logs_server).start()
+    webserver_task = asyncio.create_task(run_logs_server())
 
     send_notification("Web service started!", important=False)
 
+    await webserver_task
     await scraper_task
     await examine_task
 
