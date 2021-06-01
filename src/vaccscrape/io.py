@@ -18,6 +18,13 @@ async def write_single(result: ScrapeResult) -> None:
     db.close()
 
 
+async def write_multiple(results: List[ScrapeResult]) -> None:
+    db = _get_db()
+    for result in results:
+        db.insert(result.dict())
+    db.close()
+
+
 async def read_latest_successes(seconds: int) -> List[ScrapeSuccess]:
     return _read_latest("SCRAPE_SUCCESS", seconds)
 

@@ -1,11 +1,13 @@
 import logging
+from collections import Counter, defaultdict
+from typing import List
 
 from sanic import Sanic, response
 
 from vaccscrape import config, io
+from vaccscrape.models import ScrapeError, ScrapeSuccess
 
 logger = logging.getLogger(__name__)
-
 
 app = Sanic("Vaccination scraper status page")
 
@@ -13,13 +15,25 @@ app = Sanic("Vaccination scraper status page")
 @app.route("/status")
 async def test(request):
     TIME_WINDOW_SEC = 60 * 60
-    successes = io.read_latest_successes__sync(TIME_WINDOW_SEC)
+    all_successes = io.read_latest_successes__sync(TIME_WINDOW_SEC)
 
-    msg = f"{len(successes)} successful scrape(s) per hour<br/>"
-    if len(successes) < config.MONITOR_SUCCESSES_PER_HOUR:
-        msg += "ERROR"
-    else:
-        msg += "scraping like a rockstar"
+    successes = Counter(map(lambda r: r.service, all_successes))
+
+    msg = ""
+
+    for service_name in config.PAGES.keys():
+        msg += f"\n{service_name}: "
+
+        num = successes.get(service_name, 0)
+
+        if num >= config.MONITOR_SUCCESSES_PER_HOUR:
+            msg += f"SUCCESS "
+        else:
+            msg += f"ERROR "
+
+        msg += f"- {num} scrape successes within the last hour"
+
+        msg += "<br />\n"
 
     return response.html(body=msg)
 
@@ -45,12 +59,37 @@ async def index(request):
 def scrapes_page():
     TIME_WINDOW_SEC = 24 * 60 * 60
 
-    success_results = io.read_latest_successes__sync(TIME_WINDOW_SEC)
-    error_results = io.read_latest_errors__sync(TIME_WINDOW_SEC)
+    success_results = defaultdict(list)
+    for s in io.read_latest_successes__sync(TIME_WINDOW_SEC):
+        success_results[s.service].append(s)
 
+    error_results = defaultdict(list)
+    for s in io.read_latest_errors__sync(TIME_WINDOW_SEC):
+        error_results[s.service].append(s)
+
+    message = "<h1>Vaccination Sign-Up Notifier</h1>" + '<div class="row">'
+
+    for service_name in config.PAGES.keys():
+        message += (
+            '<div class="col">'
+            + f"<h2>{service_name}</h2>"
+            + section_for_service(
+                error_results.get(service_name, []),
+                success_results.get(service_name, []),
+            )
+            + "</div>"
+        )
+
+    message += "</div>"
+
+    return message
+
+
+def section_for_service(
+    error_results: List[ScrapeError], success_results: List[ScrapeSuccess]
+):
     errors_list = []
     successes_list = []
-
     for i in range(len(success_results)):
         previous_result = success_results[i - 1] if i >= 0 else []
         result = success_results[i]
@@ -103,21 +142,22 @@ def scrapes_page():
             row += "(same error)</li>"
 
         errors_list.append(row)
-
     successes_list.reverse()
     successes_rows = "\n".join(successes_list)
-
     errors_list.reverse()
     errors_rows = "\n".join(errors_list)
 
-    message = "<h1>1177.se Vaccination Sign-Up Notifier</h1>"
-    message += f"<h2>Error</h2>{errors_rows}<h2>Success</h2>{successes_rows}"
+    message = ""
 
-    return message
+    if errors_rows:
+        message += f"<h3>Error</h3>{errors_rows}"
+    if successes_rows:
+        message += f"<h3>Success</h3>{successes_rows}"
+    return f"{message}"
 
 
 def run_logs_server():
-    logger.info("Starting logs server")
+    logger.info("Starting logs and monitoring server")
 
     return app.create_server(
         config.ALIVE_PAGE_HOST, config.ALIVE_PAGE_PORT, return_asyncio_server=True

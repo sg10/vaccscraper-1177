@@ -50,7 +50,7 @@ async def main():
     examine_task = asyncio.create_task(run_notifier(event_scraped))
     webserver_task = asyncio.create_task(run_logs_server())
 
-    send_notification("Web service started!", important=False)
+    send_notification("", "Web service started!", important=False)
 
     await webserver_task
     await scraper_task

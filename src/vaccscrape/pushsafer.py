@@ -10,8 +10,10 @@ from vaccscrape.constants import ENV_DEBUG
 logger = logging.getLogger(__name__)
 
 
-def send_notification(message: str, important: bool) -> None:
-    logger.info("Sending push notification")
+def send_notification(service_name: str, message: str, important: bool) -> None:
+    logger.info(f"Sending push notification for {service_name}")
+
+    page_scrape = config.PAGES.get(service_name)
 
     if os.environ.get(ENV_DEBUG):
         logger.info("Not sending notification, debug mode")
@@ -26,6 +28,11 @@ def send_notification(message: str, important: bool) -> None:
     else:
         device_group = pushsafer_config["pushsafer"]["device_group_status"]
 
+    href_url = page_scrape.url if page_scrape else ""
+
+    if service_name:
+        message = service_name + ":" + message
+
     url = "https://www.pushsafer.com/api"  # Set destination URL here
     post_fields = {  # Set POST fields here
         "t": config.PUSHSAFER_TITLE,
@@ -35,8 +42,8 @@ def send_notification(message: str, important: bool) -> None:
         "i": config.PUSHSAFER_ICON_ID,
         # "c": iconcolor,
         "d": device_group,
-        "u": config.PAGE_1_URL,
-        "ut": config.PUSHSAFER_URL_TITLE,
+        "u": href_url,
+        "ut": service_name or "General",
         "k": pushsafer_config["pushsafer"]["private_key"],
     }
 
@@ -46,7 +53,3 @@ def send_notification(message: str, important: bool) -> None:
         logger.info("Notification sent")
     except Exception as e:
         logger.error(str(e))
-
-
-if __name__ == "__main__":
-    send_notification("jezus christ this is a test message", important=False)
