@@ -17,11 +17,11 @@ async def scrape() -> List[ScrapeResult]:
 
     scrape_results = []
 
+    browser = await launch(options={"headless": True, "args": ["--no-sandbox"]})
+
     for service_name, scrape_page in config.PAGES.items():
 
         logger.info(f"Fetching {service_name}")
-
-        browser = await launch(options={"headless": True, "args": ["--no-sandbox"]})
         page = await browser.newPage()
 
         try:
@@ -58,9 +58,11 @@ async def scrape() -> List[ScrapeResult]:
 
             result = ScrapeError(error_message=message, service=service_name)
 
-        await browser.close()
+        await page.close()
 
         scrape_results.append(result)
+
+    await browser.close()
 
     return scrape_results
 

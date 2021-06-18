@@ -1,7 +1,6 @@
 import logging
-import uuid
 from collections import Counter, defaultdict
-from typing import List, Dict
+from typing import List
 
 from sanic import Sanic, response
 
@@ -48,43 +47,13 @@ async def index(request):
         'in="anonymous">'
     )
 
-    google_charts_js = '<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>'
-
-    html_head = bootstrap_css + google_charts_js
-
     page = scrapes_page()
 
     content = (
-        f'{html_head}<meta charset="utf-8"/>'
-        f'<div style="padding: 2em;">{page}{histogram("x label", "y label", {"a": 2, "b": 3})}</div>'
+        f'{bootstrap_css}<meta charset="utf-8"/>'
+        f'<div style="padding: 2em;">{page}</div>'
     )
     return response.html(body=content)
-
-
-def histogram(x_label: str, y_label: str, hist_values: Dict[str, int]) -> str:
-    div_id = str(uuid.uuid4())
-
-    hist_js = ", ".join([f'["{k}", {v}]' for k, v in hist_values.items()])
-
-    return (
-        '<script type="text/javascript">'
-        '  google.charts.load("current", {packages:["corechart"]});'
-        "  google.charts.setOnLoadCallback(drawChart);"
-        "  function drawChart() {"
-        "    var data = google.visualization.arrayToDataTable(["
-        f'     ["{x_label}", "{y_label}"],'
-        f"      {hist_js}"
-        "]);"
-        "    var options = {"
-        '      title: "Lengths of dinosaurs, in meters",'
-        '      legend: { position: "none" },'
-        "    };"
-        f'    var chart = new google.visualization.Histogram(document.getElementById("{div_id}"));'
-        "    chart.draw(data, options);"
-        "  }"
-        "</script>"
-        f'<div id="{div_id}" style="width: 900px; height: 500px;"></div>'
-    )
 
 
 def scrapes_page():
