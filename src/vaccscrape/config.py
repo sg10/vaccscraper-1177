@@ -24,6 +24,7 @@ PUSHSAFER_CONFIG_FILE = "config.ini"
 
 class ProcessingType(str, Enum):
     SET = "set"
+    SINGLE_REGEX_PAD = "single_regex_pad"
 
 
 @dataclass
@@ -31,6 +32,7 @@ class PageToScrape:
     url: str
     selector: str
     processing_type: ProcessingType
+    processing_details: str
 
 
 def fetch_pages() -> Dict[str, PageToScrape]:
@@ -46,6 +48,7 @@ def fetch_pages() -> Dict[str, PageToScrape]:
                 url=config.get(section, "url"),
                 selector=config.get(section, "selector"),
                 processing_type=config.get(section, "processing_type"),
+                processing_details=config.get(section, "processing_details") or "",
             )
             pages[service_name] = p
 

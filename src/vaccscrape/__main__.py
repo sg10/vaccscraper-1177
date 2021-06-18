@@ -5,7 +5,8 @@ import os
 from src.vaccscrape.web import run_logs_server
 from vaccscrape import config
 from vaccscrape.constants import ENV_DEBUG
-from vaccscrape.notifier import notifier, send_notification
+from vaccscrape.examine import examine
+from vaccscrape.pushsafer import send_notification
 from vaccscrape.scrape import scrape_and_save
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ async def run_notifier(event_scraped: asyncio.Event):
         try:
             await event_scraped.wait()
             event_scraped.clear()
-            await notifier()
+            await examine()
         except Exception as ex:
             logger.error(ex)
 
@@ -50,7 +51,7 @@ async def main():
     examine_task = asyncio.create_task(run_notifier(event_scraped))
     webserver_task = asyncio.create_task(run_logs_server())
 
-    send_notification("", "Web service started!", important=False)
+    send_notification("", "Web service started!", send_to_all=False)
 
     await webserver_task
     await scraper_task

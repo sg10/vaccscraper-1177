@@ -1,10 +1,13 @@
+import asyncio
 import logging
+import re
 from typing import List
 
 from pyppeteer import launch
 from pyppeteer.errors import PyppeteerError
 
 from vaccscrape import config, io
+from vaccscrape.config import ProcessingType
 from vaccscrape.models import ScrapeError, ScrapeResult, ScrapeSuccess
 
 logger = logging.getLogger(__name__)
@@ -24,14 +27,27 @@ async def scrape() -> List[ScrapeResult]:
         try:
 
             await page.goto(scrape_page.url)
-
+            await page.waitFor(scrape_page.selector)
             dom_elements = await page.JJ(scrape_page.selector)
             text_elements = [
                 await page.evaluate("(element) => element.textContent", e)
                 for e in dom_elements
             ]
 
-            result = ScrapeSuccess(headlines=text_elements, service=service_name)
+            if scrape_page.processing_type == ProcessingType.SINGLE_REGEX_PAD:
+                merged = "".join(text_elements)
+                matched = re.findall(scrape_page.processing_details, merged)
+                matched = [f"...{m}..." for m in matched]
+                result = ScrapeSuccess(headlines=matched, service=service_name)
+
+            elif scrape_page.processing_type == ProcessingType.SET:
+                result = ScrapeSuccess(headlines=text_elements, service=service_name)
+
+            else:
+                raise RuntimeError(
+                    f"Unknown processing type: {scrape_page.processing_type}"
+                )
+
             logger.info("Fetch success")
 
         except PyppeteerError as error:
