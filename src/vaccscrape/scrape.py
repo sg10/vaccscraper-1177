@@ -37,7 +37,7 @@ async def scrape() -> List[ScrapeResult]:
             if scrape_page.processing_type == ProcessingType.SINGLE_REGEX_PAD:
                 merged = "".join(text_elements)
                 matched = re.findall(scrape_page.processing_details, merged)
-                matched = [f"...{m}..." for m in matched]
+                matched = [f"...{m}..." for m in matched if m]
                 result = ScrapeSuccess(headlines=matched, service=service_name)
 
             elif scrape_page.processing_type == ProcessingType.SET:
